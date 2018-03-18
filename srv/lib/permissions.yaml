@@ -1,0 +1,7 @@
+
+cln1:
+  find*: true
+
+cln2:
+  insert: user.username === 'x1'
+  findOne: true
