@@ -1,7 +1,8 @@
 
 cln1:
-  find*: true
+  '*': true
 
 cln2:
-  insert: user.username === 'x1'
-  findOne: true
+  insert: "doc.userId === user._id"
+  query: "{ userId: user._id}"
+  update: "field('userId').notModified()"

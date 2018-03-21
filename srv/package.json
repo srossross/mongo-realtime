@@ -4,7 +4,7 @@
   "description": "Serverless realtime database",
   "main": "index.js",
   "scripts": {
-    "test": "mocha server/**/*.spec.js",
+    "test": "mocha lib/test.js lib/**/*.spec.js",
     "start": "DEBUG='mongo-realtime:*' nodemon index.js"
   },
   "repository": {
@@ -22,16 +22,17 @@
     "babel-plugin-transform-runtime": "^6.23.0",
     "babel-preset-env": "^1.6.1",
     "babel-register": "^6.26.0",
+    "bson": "^2.0.4",
     "d": "^1.0.0",
     "debug": "^3.1.0",
     "engine.io": "^3.2.0",
     "lodash": "^4.17.5",
     "micromatch": "^3.1.9",
+    "mongo-oplog": "^2.1.0",
     "mongodb": "^3.0.4",
     "node-yaml": "^3.1.1",
     "package.json": "^2.0.1",
-    "safe-eval": "^0.3.0",
-    "wildcard": "^1.1.2"
+    "safe-eval": "^0.3.0"
   },
   "devDependencies": {
     "chai": "^4.1.2",

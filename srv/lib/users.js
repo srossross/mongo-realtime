@@ -1,3 +1,8 @@
+import BSON from 'bson';
+
+const bson = new BSON();
+
+const debug = require('debug')('mongo-realtime:presense');
 
 export default class Users {
   constructor(userDB) {
@@ -8,9 +13,9 @@ export default class Users {
   async waitForLogin(socket) {
     const data = await new Promise((resolve) => {
       const listener = (msg) => {
-        const object = JSON.parse(msg);
+        const object = bson.deserialize(msg);
         if (object.op === 'login') {
-          console.log('User trying to log in', object.data);
+          debug('User trying to log in', object.data);
           socket.removeListener('message', listener);
           resolve(object.data);
         }
@@ -19,7 +24,7 @@ export default class Users {
     });
 
     socket.once('close', () => {
-      console.log(`socket close for ${data.username}`);
+      debug(`socket close for ${data.username}`);
       this.userDB.collection('users').updateOne(
         { username: data.username },
         { $set: { connected: false } },
@@ -27,19 +32,18 @@ export default class Users {
       );
     });
 
-    console.log(`socket open for ${data.username}`);
+    debug(`socket open for ${data.username}`);
     const { value } = await this.userDB.collection('users').findOneAndUpdate(
       { username: data.username },
       { $set: { connected: true } },
       { upsert: true, returnOriginal: false },
     );
-    console.log('value', value);
     return value;
   }
 
 
   updatePresense(key, isConnected) {
-    console.log(`updatePresense ${key} isConnected:${isConnected}`);
+    debug(`updatePresense ${key} isConnected:${isConnected}`);
   }
 
   async watch() {

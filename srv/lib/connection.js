@@ -1,14 +1,28 @@
+import BSON from 'bson';
 
+import Perms from './perms';
+
+const bson = new BSON();
 const debug = require('debug')('mongo-realtime:connection');
 
+
 class Connection {
-  constructor(perms, user, db, socket) {
+  constructor(perms, user, db, socket, rt) {
     this.user = user;
+    this.rt = rt;
     this.db = db;
     this.socket = socket;
     this.perms = perms;
+    this.watching = new Set();
+    socket.on('message', data => this.message(bson.deserialize(data)));
+    socket.on('close', () => this.unwatchAll());
+  }
 
-    socket.on('message', data => this.message(JSON.parse(data)));
+  unwatchAll() {
+    this.watching.forEach((handle) => {
+      this.rt.unwatch(handle);
+      debug(`Unwatch ${handle}`);
+    });
   }
 
   send(requestID, err, result) {
@@ -16,58 +30,151 @@ class Connection {
     if (err) {
       error = err.toString();
     }
-    this.socket.send(JSON.stringify({ requestID, result, error }));
+    this.socket.send(bson.serialize({ requestID, result, error }));
   }
 
-  insertOne(data, ruleResult) {
-    if (!ruleResult) {
-      throw new Error('can not insert data');
+  insertOne(collection, doc) {
+    return this.db.collection(collection).insertOne(doc);
+  }
+
+  findOne(collection, query) {
+    return this.db.collection(collection).findOne(query);
+  }
+
+  find(collection, query) {
+    return this.db.collection(collection).find(query).toArray();
+  }
+
+  async updateOne(collection, query, update) {
+    const res = await this.db.collection(collection).updateOne(query, update);
+    const { result } = res;
+    const { nModified, ok } = result;
+    return { nModified, ok };
+  }
+
+  watchID(collection, requestID, query) {
+    const handle = this.rt.watchQuery(collection, query, (op, doc) => {
+
+    });
+    this.watching.add(handle);
+    return { handle };
+  }
+
+  watchQuery(collection, requestID, query) {
+    const handle = this.rt.watchQuery(collection, query, (op, doc) => {
+      debug(`Update watcher ${handle} with op:${op} id:${doc._id}`);
+      this.socket.send(bson.serialize({ requestID, op, doc }));
+    });
+    this.watching.add(handle);
+    return { handle };
+  }
+  unwatch(handle) {
+    this.rt.unwatch(handle);
+    this.watching.delete(handle);
+  }
+
+  generateQueryParams(collection, queryRule, query) {
+    if (!queryRule.valid()) {
+      throw new Error(`User ${this.user.username} can not query collection ${collection}`);
     }
-    return this.db.collection(data.collection).insertOne(data.doc);
+    if (typeof query !== 'object') {
+      throw new Error(`Query must be object (got ${typeof query})`);
+    }
+    const ruleResult = queryRule.result();
+    if (!ruleResult) {
+      throw new Error(`User ${this.user.username} can not query collection ${collection}`);
+    }
+    if (ruleResult === true) {
+      return query; // eslint-disable-line prefer-destructuring
+    }
+    return { $and: [ruleResult, query] };
   }
 
-  findOne(data, ruleResult) {
-    return this.db.collection(data.collection).findOne(Object.assign(data.query, ruleResult));
+  generateUpdateParams(collection, rule, update) {
+    if (!rule.valid()) {
+      throw new Error(`User ${this.user.username} can not update in collection ${collection}`);
+    }
+    const ruleResult = rule.result({ update });
+    if (!ruleResult) {
+      throw new Error(`User ${this.user.username} can not update in collection ${collection}`);
+    }
+
+    return update;
+  }
+  generateInsertParams(collection, rule, doc) {
+    if (!rule.valid()) {
+      throw new Error(`User ${this.user.username} can not insert into collection ${collection}`);
+    }
+    const ruleResult = rule.result({ doc });
+    if (!ruleResult) {
+      throw new Error(`User ${this.user.username} can not insert into collection ${collection}`);
+    }
+
+    return doc;
   }
 
-  find(data, ruleResult) {
-    return this.db.collection(data.collection)
-      .find(Object.assign(data.query, ruleResult)).toArray();
+  generateParams(collection, op, data) {
+    const rules = this.perms.rules(collection, this.user);
+
+    const query = Perms.hasQuery(op)
+      ? this.generateQueryParams(collection, rules.query, data.query) : undefined;
+
+    const update = Perms.hasUpdate(op)
+      ? this.generateUpdateParams(collection, rules.update, data.update) : undefined;
+
+    const doc = Perms.hasUpdate(op)
+      ? this.generateInsertParams(collection, rules.insert, data.doc) : undefined;
+
+    return { query, update, doc };
+  }
+
+  async performOperation(collection, op, query, doc, update, data) {
+    let result;
+    switch (op) {
+      case 'insertOne':
+        result = await this.insertOne(collection, doc);
+        break;
+      case 'updateOne':
+        result = await this.updateOne(collection, query, update);
+        break;
+      case 'findOne':
+        result = await this.findOne(collection, query);
+        break;
+      case 'find':
+        result = await this.find(collection, query);
+        break;
+      case 'watchID':
+        result = await this.watchID(collection, data.requestID, query);
+        break;
+      case 'watchQuery':
+        result = await this.watchQuery(collection, data.requestID, query);
+        break;
+      case 'unwatch':
+        result = await this.unwatch(data.handle);
+        break;
+      default:
+        throw new Error(`Unsupported operation ${op}`);
+    }
+    return result;
   }
 
   async message(data) {
     const { requestID, collection, op } = data;
     debug(`Recieved message: user:${this.user.username} wants to ${op} in ${collection}`);
-    const rule = this.perms.rule(collection, this.user, op);
-
-    if (!rule.valid()) {
-      debug('rule is not valid');
-      this.send(requestID, `User ${this.user.username} can not ${op} collection ${collection}`);
-    }
-
-    const ruleResult = rule.result(data);
 
     let result;
     try {
-      switch (op) {
-        case 'insertOne':
-          result = await this.insertOne(data, ruleResult);
-          break;
-        case 'findOne':
-          result = await this.findOne(data, ruleResult);
-          break;
-        case 'find':
-          result = await this.find(data, ruleResult);
-          break;
-        default:
-          throw new Error();
-      }
+      const { query, doc, update } = this.generateParams(collection, op, data);
+      result = await this.performOperation(collection, op, query, doc, update, data);
     } catch (err) {
-      this.socket.send(JSON.stringify({ requestID, error: err.toString() }));
+      debug(`caught error ${err.message}`);
+      console.error(err);
+      this.socket.send(bson.serialize({ requestID, error: err.toString() }));
       return;
     }
-    this.socket.send(JSON.stringify({ requestID, result }));
+
+    this.socket.send(bson.serialize({ requestID, result }));
   }
 }
 
-export default (perms, user, db, socket) => new Connection(perms, user, db, socket);
+export default (...args) => new Connection(...args);
