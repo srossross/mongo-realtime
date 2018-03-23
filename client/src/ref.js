@@ -16,7 +16,15 @@ class Ref extends EventEmitter {
   }
 
   set(values) {
-    return this.db.collection(this.collection).update(this.query, { $set: values });
+    return this.db.collection(this.collection).updateMany(this.query, { $set: values });
+  }
+
+  update(update) {
+    return this.db.collection(this.collection).updateMany(this.query, update);
+  }
+
+  count() {
+    return this.db.collection(this.collection).count(this.query);
   }
 
   subscribe() {
@@ -26,14 +34,13 @@ class Ref extends EventEmitter {
       query: this.query,
     });
 
-    console.log('promise.requestID', promise.requestID);
     this.watching = promise.then(({ handle }) => {
       this.handle = handle;
+      debug(`ref is subscribed ${handle}`);
       return { handle };
     });
 
     this.db.on(`message/${promise.requestID}`, ({ op, doc }) => {
-      console.log('got message', op, doc);
       switch (op) {
         case 'u':
           this.emit('child_updated', doc);
@@ -51,53 +58,14 @@ class Ref extends EventEmitter {
   }
 
   unSubscribe() {
-    return this.watching.then(({ handle }) => this.db.executeCommand({
-      collection: this.collection,
-      op: 'unwatch',
-      handle,
-    }));
+    return this.watching.then(({ handle }) => {
+      this.db.executeCommand({
+        collection: this.collection,
+        op: 'unwatch',
+        handle,
+      }).then(() => debug(`ref is unsubscribed ${handle}`));
+    });
   }
 }
 
 module.exports = { Ref };
-//
-// class Ref extends EventEmitter {
-//   constructor(collection, query) {
-//     super();
-//     this.subscriptions = {};
-//     this.collection = collection;
-//     this.query = query;
-//     this.STATE = 'FETCHING';
-//
-//     this.once('ready', (doc) => {
-//       this.STATE = 'READY';
-//       this.doc = doc;
-//     });
-//   }
-//
-//   setRequestID(requestID) {
-//     this.requestID = requestID;
-//   }
-//
-//   ready(cb) {
-//     if (this.STATE === 'READY') {
-//       cb(this.doc);
-//     }
-//     this.once('ready', cb);
-//   }
-//
-//   val() {
-//     return this.doc;
-//   }
-// }
-//
-// class DocumentListRef extends Ref {
-// }
-//
-// class DocumentRef extends Ref {
-//
-// }
-//
-// module.exports = {
-//   DocumentRef, DocumentListRef,
-// };

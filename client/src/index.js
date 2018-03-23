@@ -1,68 +1,20 @@
+const fetch = require('node-fetch');
 const BSON = require('bson');
 const engine = require('engine.io-client');
 const EventEmitter = require('events');
 
-const { Ref } = require('./ref');
+const MongoWebCollection = require('./collection');
+
 
 const bson = new BSON();
 
 const debug = require('debug')('mongo-realtime:client');
 
-class MongoWebCollection {
-  constructor(db, collection) {
-    this.db = db;
-    this.collection = collection;
-  }
-
-  insertOne(doc) {
-    return this.db.executeCommand({
-      collection: this.collection,
-      op: 'insertOne',
-      doc,
-    });
-  }
-
-  updateOne(query, doc) {
-    return this.db.executeCommand({
-      collection: this.collection,
-      op: 'updateOne',
-      query,
-      doc,
-    });
-  }
-
-  findOne(query, callback) {
-    return this.db.executeCommand({
-      collection: this.collection,
-      op: 'findOne',
-      query,
-    }, callback);
-  }
-
-  find(query, callback) {
-    return this.db.executeCommand({
-      collection: this.collection,
-      op: 'find',
-      query,
-    }, callback);
-  }
-
-  ref(IdOrQuery) {
-    return new Ref(this.db, this.collection, IdOrQuery);
-  }
-
-  unwatch(requestID) {
-    return this.db.executeCommand({
-      collection: this.collection,
-      op: 'unwatch',
-      requestID,
-    });
-  }
-}
 
 class MongoWebDB extends EventEmitter {
   constructor(url) {
     super();
+    this.url = url;
     this.socket = engine(url);
     const { socket } = this;
 
@@ -116,23 +68,27 @@ class MongoWebDB extends EventEmitter {
     return promise;
   }
 
-  login(data, callback) {
-    const doLogin = () => {
-      this.executeCommand({
-        op: 'login',
-        data,
-      });
-      this.CONNECTION_STATE = 'logged in';
-      if (callback) { callback(); }
-    };
-
-    if (this.CONNECTION_STATE === 'open') {
-      doLogin();
-    } else if (this.CONNECTION_STATE === 'initialize') {
-      this.socket.once('open', doLogin);
-    } else {
-      throw new Error(`can not login when connection state is ${this.CONNECTION_STATE}`);
-    }
+  login(data) {
+    return fetch(`http://${this.url}/login`, {
+      body: JSON.stringify(data), // must match 'Content-Type' header
+      cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+      credentials: 'same-origin', // include, same-origin, *omit
+      headers: {
+        'content-type': 'application/json',
+      },
+      method: 'POST', // *GET, POST, PUT, DELETE, etc.
+      mode: 'cors', // no-cors, cors, *same-origin
+      redirect: 'error', // *manual, follow, error
+      referrer: 'no-referrer', // *client, no-referrer
+    })
+      .then((res) => {
+        console.log(res.headers);
+        return res.json();
+      })
+      .then(body => this.executeCommand({
+        login:
+        token: body.token
+      }));
   }
 }
 
