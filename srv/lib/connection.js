@@ -1,5 +1,6 @@
 import BSON from 'bson';
 
+import PermissionError from './errors';
 import Perms from './perms';
 
 const bson = new BSON();
@@ -45,6 +46,11 @@ class Connection {
     return this.db.collection(collection).find(query).toArray();
   }
 
+  count(collection, query) {
+    return this.db.collection(collection).find(query).count();
+  }
+
+
   async updateOne(collection, query, update) {
     const res = await this.db.collection(collection).updateOne(query, update);
     const { result } = res;
@@ -52,13 +58,20 @@ class Connection {
     return { nModified, ok };
   }
 
-  watchID(collection, requestID, query) {
-    const handle = this.rt.watchQuery(collection, query, (op, doc) => {
-
-    });
-    this.watching.add(handle);
-    return { handle };
+  async updateMany(collection, query, update) {
+    const res = await this.db.collection(collection).updateMany(query, update);
+    const { result } = res;
+    const { nModified, ok } = result;
+    return { nModified, ok };
   }
+
+  // watchID(collection, requestID, query) {
+  //   const handle = this.rt.watchQuery(collection, query, (op, doc) => {
+  //
+  //   });
+  //   this.watching.add(handle);
+  //   return { handle };
+  // }
 
   watchQuery(collection, requestID, query) {
     const handle = this.rt.watchQuery(collection, query, (op, doc) => {
@@ -75,14 +88,16 @@ class Connection {
 
   generateQueryParams(collection, queryRule, query) {
     if (!queryRule.valid()) {
-      throw new Error(`User ${this.user.username} can not query collection ${collection}`);
+      throw new PermissionError(`User ${this.user.username} can not query collection ${collection}`);
     }
+
     if (typeof query !== 'object') {
-      throw new Error(`Query must be object (got ${typeof query})`);
+      throw new PermissionError(`QueryEEE must be object (got ${typeof query})`);
     }
+
     const ruleResult = queryRule.result();
     if (!ruleResult) {
-      throw new Error(`User ${this.user.username} can not query collection ${collection}`);
+      throw new PermissionError(`User ${this.user.username} can not query collection ${collection}`);
     }
     if (ruleResult === true) {
       return query; // eslint-disable-line prefer-destructuring
@@ -92,22 +107,30 @@ class Connection {
 
   generateUpdateParams(collection, rule, update) {
     if (!rule.valid()) {
-      throw new Error(`User ${this.user.username} can not update in collection ${collection}`);
+      throw new PermissionError(`User ${this.user.username} can not update in collection ${collection}`);
+    }
+    if (!update) {
+      throw new PermissionError('Parameter `update` is required');
     }
     const ruleResult = rule.result({ update });
+
     if (!ruleResult) {
-      throw new Error(`User ${this.user.username} can not update in collection ${collection}`);
+      throw new PermissionError(`User ${this.user.username} can not update in collection ${collection}`);
     }
 
     return update;
   }
   generateInsertParams(collection, rule, doc) {
     if (!rule.valid()) {
-      throw new Error(`User ${this.user.username} can not insert into collection ${collection}`);
+      throw new PermissionError(`User ${this.user.username} can not insert into collection ${collection}`);
     }
+    if (!doc) {
+      throw new PermissionError('Parameter `doc` is required');
+    }
+
     const ruleResult = rule.result({ doc });
     if (!ruleResult) {
-      throw new Error(`User ${this.user.username} can not insert into collection ${collection}`);
+      throw new PermissionError(`User ${this.user.username} can not insert into collection ${collection}`);
     }
 
     return doc;
@@ -137,11 +160,17 @@ class Connection {
       case 'updateOne':
         result = await this.updateOne(collection, query, update);
         break;
+      case 'updateMany':
+        result = await this.updateMany(collection, query, update);
+        break;
       case 'findOne':
         result = await this.findOne(collection, query);
         break;
       case 'find':
         result = await this.find(collection, query);
+        break;
+      case 'count':
+        result = await this.count(collection, query);
         break;
       case 'watchID':
         result = await this.watchID(collection, data.requestID, query);
@@ -153,7 +182,7 @@ class Connection {
         result = await this.unwatch(data.handle);
         break;
       default:
-        throw new Error(`Unsupported operation ${op}`);
+        throw new PermissionError(`Unsupported operation ${op}`);
     }
     return result;
   }
@@ -167,9 +196,13 @@ class Connection {
       const { query, doc, update } = this.generateParams(collection, op, data);
       result = await this.performOperation(collection, op, query, doc, update, data);
     } catch (err) {
-      debug(`caught error ${err.message}`);
-      console.error(err);
-      this.socket.send(bson.serialize({ requestID, error: err.toString() }));
+      debug(err.message);
+      if (err.isUserError) {
+        this.socket.send(bson.serialize({ requestID, error: err.message }));
+      } else {
+        console.error(err);
+        this.socket.send(bson.serialize({ requestID, error: 'ServerError' }));
+      }
       return;
     }
 

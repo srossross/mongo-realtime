@@ -33,22 +33,20 @@ class Rule {
 }
 
 export default class Perms {
-  static RuleMap = {
-    query: ['find', 'findOne', 'findAndModifyOne', 'findAndModify', 'watchID', 'watchQuery'],
-    insert: ['insert', 'insertOne'],
-    update: ['update', 'updateOne', 'findAndModifyOne', 'findAndModify'],
-  };
+  static UpdateOps = ['updateMany', 'updateOne', 'findAndModifyOne', 'findAndModify']
+  static InsertOps = ['insert', 'insertOne']
+  static QueryOps = ['find', 'findOne', 'watchID', 'watchQuery', 'count'].concat(Perms.UpdateOps)
 
   static hasQuery(op) {
-    return Perms.RuleMap.query.indexOf(op) !== -1;
+    return Perms.QueryOps.indexOf(op) !== -1;
   }
 
   static hasInsert(op) {
-    return Perms.RuleMap.insert.indexOf(op) !== -1;
+    return Perms.InsertOps.indexOf(op) !== -1;
   }
 
   static hasUpdate(op) {
-    return Perms.RuleMap.insert.indexOf(op) !== -1;
+    return Perms.UpdateOps.indexOf(op) !== -1;
   }
 
   constructor(permData) {
@@ -65,11 +63,9 @@ export default class Perms {
 
   rule(collection, user, op) {
     const matchingCollections = matchingKeys(this.permData, collection);
-    debug('matchingCollections', matchingCollections);
 
     const rules = _.flatMap(matchingCollections, (r) => {
       const matchingOps = matchingKeys(this.permData[r], op);
-      debug('matchingOps', matchingOps);
       return matchingOps.map(op1 => this.permData[r][op1]);
     });
 

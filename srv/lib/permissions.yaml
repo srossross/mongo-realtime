@@ -1,3 +1,9 @@
+#
+# auth:
+#   native
+#
+# rules:
+'*': false
 
 cln1:
   '*': true
@@ -5,4 +11,6 @@ cln1:
 cln2:
   insert: "doc.userId === user._id"
   query: "{ userId: user._id}"
-  update: "field('userId').notModified()"
+  update: "field('userId').notModified() && user._id"
+  indices:
+    - [('a', 1)]

@@ -81,13 +81,10 @@ class MongoWebDB extends EventEmitter {
       redirect: 'error', // *manual, follow, error
       referrer: 'no-referrer', // *client, no-referrer
     })
-      .then((res) => {
-        console.log(res.headers);
-        return res.json();
-      })
+      .then(res => res.json())
       .then(body => this.executeCommand({
-        login:
-        token: body.token
+        op: 'login',
+        token: body.token,
       }));
   }
 }

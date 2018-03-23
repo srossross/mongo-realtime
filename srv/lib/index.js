@@ -1,10 +1,11 @@
-import { MongoClient } from 'mongodb';
+import { createServer } from 'http';
 
+import app from './auth';
+import { getClient, getRTClient } from './db';
 import Users from './users';
 import Perms from './perms';
-import { MONGO_URL, MONGO_OPTIONS, PORT } from './defaults';
-import MongoRealTimeClient from './real-time-client';
-import connection from './connection';
+import { PORT } from './defaults';
+import connections from './connections';
 
 const engine = require('engine.io');
 const yaml = require('node-yaml');
@@ -12,17 +13,15 @@ const debug = require('debug')('mongo-realtime:server');
 
 const dbName = 'web';
 
-
 module.exports = async function main() {
-  const server = engine.listen(PORT);
+  const server = new engine.Server();
 
   const permData = await yaml.read('./permissions.yaml');
   const perms = new Perms(permData);
   // Database Name
   // Connect using MongoClient
-  const client = await MongoClient.connect(MONGO_URL, MONGO_OPTIONS);
-  debug(`Connected to mongo @ ${MONGO_URL}`);
-  const rtclient = await MongoRealTimeClient.connect(client);
+  const client = await getClient();
+  const rtclient = await getRTClient();
 
   const userDB = client.db('users');
   const users = new Users(userDB);
@@ -32,10 +31,23 @@ module.exports = async function main() {
   console.log(`server listening on port ${PORT}`);
 
   const rt = rtclient.db('web');
-  server.on('connection', async (socket) => {
-    debug('Client Connected');
-    const user = await users.waitForLogin(socket);
-    debug(`User ${user.username} logged in`);
-    connection(perms, user, client.db(dbName), socket, rt);
+
+  server.on('connection', connections(client, perms, client.db(dbName), rt));
+
+  const httpServer = createServer();
+  httpServer.on('upgrade', (req, socket, head) => {
+    debug('upgrade', req.method, req.url);
+    server.handleUpgrade(req, socket, head);
   });
+
+  httpServer.on('request', (req, res) => {
+    debug('handleRequest', req.method, req.url);
+    if (req.url.match(/^\/engine.io/)) {
+      server.handleRequest(req, res);
+    } else {
+      app(req, res);
+    }
+  });
+
+  httpServer.listen(PORT);
 };
