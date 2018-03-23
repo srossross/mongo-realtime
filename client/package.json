@@ -5,24 +5,39 @@
   "main": "src/index.js",
   "scripts": {
     "test": "mocha src/**/*.spec.js",
-    "doc": "esdoc"
+    "start": "NODE_ENV=debug webpack-dev-server --open",
+    "bundle": "NODE_ENV=production webpack",
+    "watch": "NODE_ENV=debug webpack --watch",
+    "lint": "eslint --ext .js,.jsx src/"
   },
-  "author": "",
+  "author": "Sean Ross-Ross <srossross@gmail.com>",
   "license": "ISC",
   "dependencies": {
     "bson": "^2.0.4",
     "debug": "^3.1.0",
     "engine.io-client": "^3.2.1",
-    "node-fetch": "^2.1.1"
+    "html-webpack-plugin": "^3.1.0",
+    "node-fetch": "^2.1.1",
+    "webpack": "^3.11.0",
+    "webpack-dev-server": "^2.11.1",
+    "babel-eslint": "^8.2.2",
+    "babel-plugin-transform-class-properties": "^6.24.1",
+    "babel-preset-env": "^1.6.1",
+    "babel-core": "^6.26.0",
+    "babel-loader": "7.1.3",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-preset-react": "^6.24.1"
   },
   "devDependencies": {
-    "chai": "^4.1.2",
     "babel-eslint": "^8.2.2",
+    "chai": "^4.1.2",
     "eslint": "^4.18.1",
     "eslint-config-airbnb": "16.1.0",
     "eslint-plugin-import": "^2.9.0",
     "eslint-plugin-jsx-a11y": "^6.0.2",
     "eslint-plugin-react": "^7.7.0",
-    "mocha": "^5.0.4"
+    "mocha": "^5.0.4",
+    "uglify-js": "^3.3.16",
+    "uglifyjs-webpack-plugin": "^1.2.4"
   }
 }
