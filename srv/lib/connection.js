@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 import BSON from 'bson';
 
 import PermissionError from './errors';
@@ -34,16 +35,16 @@ class Connection {
     this.socket.send(bson.serialize({ requestID, result, error }));
   }
 
-  insertOne(collection, doc) {
-    return this.db.collection(collection).insertOne(doc);
+  insertOne(collection, doc, options) {
+    return this.db.collection(collection).insertOne(doc, options);
   }
 
-  findOne(collection, query) {
-    return this.db.collection(collection).findOne(query);
+  findOne(collection, query, options) {
+    return this.db.collection(collection).findOne(query, options);
   }
 
-  find(collection, query) {
-    return this.db.collection(collection).find(query).toArray();
+  find(collection, query, options) {
+    return this.db.collection(collection).find(query, options).toArray();
   }
 
   count(collection, query) {
@@ -51,15 +52,15 @@ class Connection {
   }
 
 
-  async updateOne(collection, query, update) {
-    const res = await this.db.collection(collection).updateOne(query, update);
+  async updateOne(collection, query, update, options) {
+    const res = await this.db.collection(collection).updateOne(query, update, options);
     const { result } = res;
     const { nModified, ok } = result;
     return { nModified, ok };
   }
 
-  async updateMany(collection, query, update) {
-    const res = await this.db.collection(collection).updateMany(query, update);
+  async updateMany(collection, query, update, options) {
+    const res = await this.db.collection(collection).updateMany(query, update, options);
     const { result } = res;
     const { nModified, ok } = result;
     return { nModified, ok };
@@ -75,6 +76,7 @@ class Connection {
   }
 
   watchQuery(collection, requestID, query) {
+    // TODO: options
     const handle = this.rt.watchQuery(collection, query, (op, doc) => {
       debug(`Update watcher ${handle} with op:${op} id:${doc._id}`);
       this.socket.send(bson.serialize({ requestID, op, doc }));
@@ -139,45 +141,48 @@ class Connection {
 
   generateParams(collection, op, data) {
     const rules = this.perms.rules(collection, this.user);
-
     const query = Perms.hasQuery(op)
       ? this.generateQueryParams(collection, rules.query, data.query) : undefined;
 
     const update = Perms.hasUpdate(op)
       ? this.generateUpdateParams(collection, rules.update, data.update) : undefined;
 
-    const doc = Perms.hasUpdate(op)
-      ? this.generateInsertParams(collection, rules.insert, data.doc) : undefined;
+    const { upsert } = (data.options || {});
+    const doc = Perms.hasInsert(op, upsert)
+      ? this.generateInsertParams(collection, rules.insert, data.doc, data.query) : undefined;
 
     return { query, update, doc };
   }
 
   async performOperation(collection, op, query, doc, update, data) {
+    const { project, upsert } = (data.options || {});
+    const options = { project, upsert };
+
     let result;
     switch (op) {
       case 'insertOne':
-        result = await this.insertOne(collection, doc);
+        result = await this.insertOne(collection, doc, options);
         break;
       case 'updateOne':
-        result = await this.updateOne(collection, query, update);
+        result = await this.updateOne(collection, query, update, options);
         break;
       case 'updateMany':
-        result = await this.updateMany(collection, query, update);
+        result = await this.updateMany(collection, query, update, options);
         break;
       case 'findOne':
-        result = await this.findOne(collection, query);
+        result = await this.findOne(collection, query, options);
         break;
       case 'find':
-        result = await this.find(collection, query);
+        result = await this.find(collection, query, options);
         break;
       case 'count':
-        result = await this.count(collection, query);
+        result = await this.count(collection, query, options);
         break;
       case 'watchID':
-        result = await this.watchID(collection, data.requestID, query);
+        result = await this.watchID(collection, data.requestID, query, options);
         break;
       case 'watchQuery':
-        result = await this.watchQuery(collection, data.requestID, query);
+        result = await this.watchQuery(collection, data.requestID, query, options);
         break;
       case 'unwatch':
         result = await this.unwatch(data.handle);

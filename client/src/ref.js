@@ -87,10 +87,16 @@ class RefOne extends RefBase {
     return this.db.collection(this.collection).findOne(this.query, options);
   }
 
-  set(values, options) {
+  set(values, options = {}) {
+    if (options.upsert === undefined) {
+      options.upsert = true;
+    }
     return this.db.collection(this.collection).updateOne(this.query, { $set: values }, options);
   }
 
+  create(values, options) {
+    return this.db.collection(this.collection).insertOne(this.query, { $set: values }, options);
+  }
   update(update, options) {
     return this.db.collection(this.collection).updateOne(this.query, update, options);
   }

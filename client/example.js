@@ -41,6 +41,8 @@ async function main() {
   await ref.subscribe();
 
   console.log('await ref.get()', await ref.get());
+  console.log('await ref.get()', await ref.set({ a: 1 }));
+  console.log('await ref.get()', await ref.get());
 }
 
 // client.login({ username: 'x1' }, () => {
