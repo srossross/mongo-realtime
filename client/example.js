@@ -5,7 +5,7 @@ const MongoWebClient = require('./src/index');
 
 const client = new MongoWebClient('localhost:3333');
 
-async function main() {
+async function mainRefMany() {
   const docs = await client.collection('cln1').find({ b: 1 });
 
   console.log('!!ready', docs.length);
@@ -23,17 +23,28 @@ async function main() {
   });
 
   await ref.subscribe();
-  // await ref.unSubscribe();
 
-  console.log('!!ready', await ref.get());
-  console.log('!!count', await ref.count());
-
-  console.log('await', await client.collection('cln1').find(undefined));
+  // console.log('await', await client.collection('cln1').find(undefined));
   // ref.set({ hello: 'world' });
 }
 
-// client.login({ username: 'x1' }, () => {
-// main().then('done main').catch(err => console.error(err));
+async function main() {
+  const ref = client.collection('cln1').ref('hello');
 
-client.login({ username: 'xyz', password: 'xyz' });
+  ref.on('changed', (doc) => {
+    console.log('!!child_added', doc);
+  });
+  ref.on('removed', (doc) => {
+    console.log('!!child_removed', doc);
+  });
+
+  await ref.subscribe();
+
+  console.log('await ref.get()', await ref.get());
+}
+
+// client.login({ username: 'x1' }, () => {
+main().then('done main').catch(err => console.error(err));
+
+// client.login({ username: 'xyz', password: 'xyz' });
 // });

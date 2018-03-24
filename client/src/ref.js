@@ -3,11 +3,27 @@ const debug = require('debug')('mongo-realtime:ref');
 
 // export const a = 1;
 
-class Ref extends EventEmitter {
-  constructor(db, collection, query) {
+class RefBase extends EventEmitter {
+  constructor(db, collection) {
     super();
     this.db = db;
     this.collection = collection;
+  }
+
+  unSubscribe() {
+    return this.watching.then(({ handle }) => {
+      this.db.executeCommand({
+        collection: this.collection,
+        op: 'unwatch',
+        handle,
+      }).then(() => debug(`ref is unsubscribed ${handle}`));
+    });
+  }
+}
+
+class Ref extends RefBase {
+  constructor(db, collection, query) {
+    super(db, collection);
     this.query = query;
   }
 
@@ -15,7 +31,7 @@ class Ref extends EventEmitter {
     return this.db.collection(this.collection).find(this.query);
   }
 
-  set(values) {
+  setAll(values) {
     return this.db.collection(this.collection).updateMany(this.query, { $set: values });
   }
 
@@ -54,18 +70,67 @@ class Ref extends EventEmitter {
         default:
       }
     });
-    // this.db.collection(this.collection).update(this.query, { $set: values });
+  }
+}
+
+class RefOne extends RefBase {
+  constructor(db, collection, id) {
+    super(db, collection);
+    this.id = id;
   }
 
-  unSubscribe() {
-    return this.watching.then(({ handle }) => {
-      this.db.executeCommand({
-        collection: this.collection,
-        op: 'unwatch',
-        handle,
-      }).then(() => debug(`ref is unsubscribed ${handle}`));
+  get query() {
+    return { _id: this.id };
+  }
+
+  get(options) {
+    return this.db.collection(this.collection).findOne(this.query, options);
+  }
+
+  set(values, options) {
+    return this.db.collection(this.collection).updateOne(this.query, { $set: values }, options);
+  }
+
+  update(update, options) {
+    return this.db.collection(this.collection).updateOne(this.query, update, options);
+  }
+
+  remove(options) {
+    return this.db.collection(this.collection).remove(this.query, options);
+  }
+
+  count() {
+    return this.db.collection(this.collection).count(this.query);
+  }
+
+  subscribe() {
+    const promise = this.db.executeCommand({
+      collection: this.collection,
+      op: 'watchQuery',
+      query: { _id: this.id },
+    });
+
+    this.watching = promise.then(({ handle }) => {
+      this.handle = handle;
+      debug(`ref is subscribed ${handle}`);
+      return { handle };
+    });
+
+    this.db.on(`message/${promise.requestID}`, ({ op, doc }) => {
+      switch (op) {
+        case 'u':
+          this.emit('changed', doc);
+          break;
+        case 'i':
+          this.emit('changed', doc);
+          break;
+        case 'd':
+          this.emit('removed', doc);
+          break;
+        default:
+      }
     });
   }
 }
 
-module.exports = { Ref };
+module.exports = { Ref, RefOne };

@@ -3,5 +3,7 @@ const MongoWebDB = require('./index');
 
 window.mongoRealtime = {
   MongoWebDB,
-  initializeApp: () => {},
+  initializeApp: (opts) => {
+    window.mongoRealtime.db = new MongoWebDB(opts);
+  },
 };

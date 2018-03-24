@@ -2,14 +2,11 @@ const fetch = require('node-fetch');
 const BSON = require('bson');
 const engine = require('engine.io-client');
 const EventEmitter = require('events');
-
+const { Buffer } = require('buffer');
 const MongoWebCollection = require('./collection');
 
-
 const bson = new BSON();
-
 const debug = require('debug')('mongo-realtime:client');
-
 
 class MongoWebDB extends EventEmitter {
   constructor(url) {
@@ -37,8 +34,8 @@ class MongoWebDB extends EventEmitter {
     return new MongoWebCollection(this, name);
   }
 
-  handleMessage(buf) {
-    const data = bson.deserialize(buf);
+  handleMessage(message) {
+    const data = bson.deserialize(Buffer.from(message));
     this.emit(`message/${data.requestID}`, data);
   }
 

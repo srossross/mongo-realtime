@@ -9,6 +9,13 @@ const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 
 module.exports = {
   devtool: 'source-map',
+  devServer: {
+    port: 3001,
+    contentBase: path.join(__dirname, 'dist'),
+    historyApiFallback: {
+      index: 'index.html',
+    },
+  },
 
   entry: {
     'mongo-realtime': './src/browser.js',
