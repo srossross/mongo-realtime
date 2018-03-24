@@ -65,13 +65,14 @@ class Connection {
     return { nModified, ok };
   }
 
-  // watchID(collection, requestID, query) {
-  //   const handle = this.rt.watchQuery(collection, query, (op, doc) => {
-  //
-  //   });
-  //   this.watching.add(handle);
-  //   return { handle };
-  // }
+  watchID(collection, requestID, query) {
+    const handle = this.rt.watchID(collection, query, (op, doc) => {
+      debug(`Update watcher ${handle} with op:${op} id:${doc._id}`);
+      this.socket.send(bson.serialize({ requestID, op, doc }));
+    });
+    this.watching.add(handle);
+    return { handle };
+  }
 
   watchQuery(collection, requestID, query) {
     const handle = this.rt.watchQuery(collection, query, (op, doc) => {
