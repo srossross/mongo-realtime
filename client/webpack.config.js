@@ -4,21 +4,31 @@
 const path = require('path');
 const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 
-// const isDebug = process.env.NODE_ENV !== 'production';
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+
+const HTMLIndex = new HtmlWebpackPlugin({
+  template: './example/index.html',
+  chunks: ['example'],
+
+  filename: 'index.html',
+  inject: 'body',
+});
 
 
 module.exports = {
   devtool: 'source-map',
-  devServer: {
-    port: 3001,
-    contentBase: path.join(__dirname, 'dist'),
-    historyApiFallback: {
-      index: 'index.html',
-    },
-  },
+  // devServer: {
+  //   port: 3001,
+  //   contentBase: path.join(__dirname, 'dist'),
+  //   historyApiFallback: {
+  //     index: 'index.html',
+  //   },
+  // },
 
   entry: {
     'mongo-realtime': './src/browser.js',
+    example: './example/index.js',
   },
   output: {
     path: path.resolve('dist'),
@@ -29,13 +39,16 @@ module.exports = {
   module: {
     loaders: [
       { test: /\.js$/, loader: 'babel-loader', exclude: /node_modules/ },
+      { test: /\.jsx$/, loader: 'babel-loader', exclude: /node_modules/ },
+
     ],
   },
   plugins: [
-    new UglifyJsPlugin({ sourceMap: true }),
+    HTMLIndex,
+    // new UglifyJsPlugin({ sourceMap: true }),
   ],
   resolve: {
-    extensions: ['.js'],
+    extensions: ['.js', '.jsx'],
   },
 
 };

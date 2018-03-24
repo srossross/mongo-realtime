@@ -1,13 +1,31 @@
+/* eslint-disable no-underscore-dangle,no-param-reassign */
 const EventEmitter = require('events');
 const debug = require('debug')('mongo-realtime:ref');
 
-// export const a = 1;
 
 class RefBase extends EventEmitter {
   constructor(db, collection) {
     super();
     this.db = db;
     this.collection = collection;
+  }
+
+  subscribe() {
+    const promise = this.db.executeCommand({
+      collection: this.collection,
+      op: 'watchQuery',
+      query: this.query,
+    });
+
+    this.get().then(docs => this.handleInitial(docs));
+
+    this.watching = promise.then(({ handle }) => {
+      this.handle = handle;
+      debug(`ref is subscribed ${handle}`);
+      this.db.on(`handle/${handle}`, ({ op, doc }) => this.handleChange(op, doc));
+
+      return { handle };
+    });
   }
 
   unSubscribe() {
@@ -43,33 +61,31 @@ class Ref extends RefBase {
     return this.db.collection(this.collection).count(this.query);
   }
 
-  subscribe() {
-    const promise = this.db.executeCommand({
-      collection: this.collection,
-      op: 'watchQuery',
-      query: this.query,
+  handleInitial(docs) {
+    this.docs = {};
+    docs.forEach((doc) => {
+      this.docs[doc._id] = doc;
     });
+    this.emit('changed', docs);
+  }
 
-    this.watching = promise.then(({ handle }) => {
-      this.handle = handle;
-      debug(`ref is subscribed ${handle}`);
-      return { handle };
-    });
-
-    this.db.on(`message/${promise.requestID}`, ({ op, doc }) => {
-      switch (op) {
-        case 'u':
-          this.emit('child_updated', doc);
-          break;
-        case 'i':
-          this.emit('child_added', doc);
-          break;
-        case 'd':
-          this.emit('child_removed', doc);
-          break;
-        default:
-      }
-    });
+  handleChange(op, doc) {
+    switch (op) {
+      case 'u':
+        this.emit('child_updated', doc);
+        this.docs[doc._id] = doc;
+        break;
+      case 'i':
+        this.emit('child_added', doc);
+        this.docs[doc._id] = doc;
+        break;
+      case 'd':
+        this.emit('child_removed', doc);
+        delete this.docs[doc._id];
+        break;
+      default:
+    }
+    this.emit('changed', Object.values(this.docs));
   }
 }
 
@@ -109,33 +125,27 @@ class RefOne extends RefBase {
     return this.db.collection(this.collection).count(this.query);
   }
 
-  subscribe() {
-    const promise = this.db.executeCommand({
-      collection: this.collection,
-      op: 'watchQuery',
-      query: { _id: this.id },
-    });
+  handleInitial(doc) {
+    this.doc = doc;
+    this.emit('changed', doc);
+  }
 
-    this.watching = promise.then(({ handle }) => {
-      this.handle = handle;
-      debug(`ref is subscribed ${handle}`);
-      return { handle };
-    });
-
-    this.db.on(`message/${promise.requestID}`, ({ op, doc }) => {
-      switch (op) {
-        case 'u':
-          this.emit('changed', doc);
-          break;
-        case 'i':
-          this.emit('changed', doc);
-          break;
-        case 'd':
-          this.emit('removed', doc);
-          break;
-        default:
-      }
-    });
+  handleChange(op, doc) {
+    switch (op) {
+      case 'u':
+        this.doc = doc;
+        this.emit('changed', doc);
+        break;
+      case 'i':
+        this.doc = doc;
+        this.emit('changed', doc);
+        break;
+      case 'd':
+        this.doc = null;
+        this.emit('removed');
+        break;
+      default:
+    }
   }
 }
 

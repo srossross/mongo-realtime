@@ -36,6 +36,7 @@ export default class Perms {
   static UpdateOps = ['updateMany', 'updateOne', 'findAndModifyOne', 'findAndModify']
   static InsertOps = ['insert', 'insertOne']
   static QueryOps = ['find', 'findOne', 'watchID', 'watchQuery', 'count'].concat(Perms.UpdateOps)
+  static RemoveOps = ['remove']
 
   static hasQuery(op) {
     return Perms.QueryOps.indexOf(op) !== -1;
@@ -43,6 +44,9 @@ export default class Perms {
 
   static hasInsert(op) {
     return Perms.InsertOps.indexOf(op) !== -1;
+  }
+  static hasRemove(op) {
+    return Perms.RemoveOps.indexOf(op) !== -1;
   }
 
   static hasUpdate(op) {
@@ -58,7 +62,10 @@ export default class Perms {
     const query = this.rule(collection, user, 'query');
     const update = this.rule(collection, user, 'update');
     const insert = this.rule(collection, user, 'insert');
-    return { query, update, insert };
+    const remove = this.rule(collection, user, 'remove');
+    return {
+      query, update, insert, remove,
+    };
   }
 
   rule(collection, user, op) {

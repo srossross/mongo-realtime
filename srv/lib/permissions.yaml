@@ -8,6 +8,9 @@
 cln1:
   '*': true
 
+items:
+  '*': true
+
 cln2:
   insert: "doc.userId === user._id"
   query: "{ userId: user._id}"

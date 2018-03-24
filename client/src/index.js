@@ -24,6 +24,7 @@ class MongoWebDB extends EventEmitter {
 
     socket.once('open', () => { this.CONNECTION_STATE = 'open'; });
     socket.on('message', data => this.handleMessage(data));
+    socket.on('disconnect', () => debug('disconnect'));
   }
 
   close() {
@@ -36,7 +37,13 @@ class MongoWebDB extends EventEmitter {
 
   handleMessage(message) {
     const data = bson.deserialize(Buffer.from(message));
-    this.emit(`message/${data.requestID}`, data);
+    if (data.handle) {
+      debug(`Recieved watch update ${data.handle}`);
+      this.emit(`handle/${data.handle}`, data);
+    } else {
+      debug(`Recieved message ${data.requestID}`);
+      this.emit(`message/${data.requestID}`, data);
+    }
   }
 
   executeCommand(cmd, callback) {
