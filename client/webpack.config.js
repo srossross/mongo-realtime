@@ -18,16 +18,10 @@ const HTMLIndex = new HtmlWebpackPlugin({
 
 module.exports = {
   devtool: 'source-map',
-  // devServer: {
-  //   port: 3001,
-  //   contentBase: path.join(__dirname, 'dist'),
-  //   historyApiFallback: {
-  //     index: 'index.html',
-  //   },
-  // },
 
   entry: {
     'mongo-realtime': './src/browser.js',
+    'mongo-realtimeui': './src/ui/browser.js',
     example: './example/index.js',
   },
   output: {

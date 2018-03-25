@@ -1,9 +1,10 @@
-const fetch = require('node-fetch');
+// const fetch = require('node-fetch');
 const BSON = require('bson');
 const engine = require('engine.io-client');
 const EventEmitter = require('events');
 const { Buffer } = require('buffer');
 const MongoWebCollection = require('./collection');
+const Auth = require('./auth');
 
 const bson = new BSON();
 const debug = require('debug')('mongo-realtime:client');
@@ -24,7 +25,9 @@ class MongoWebDB extends EventEmitter {
 
     socket.once('open', () => { this.CONNECTION_STATE = 'open'; });
     socket.on('message', data => this.handleMessage(data));
-    socket.on('disconnect', () => debug('disconnect'));
+    socket.on('disconnect', () => debug('socket disconnect'));
+    socket.on('error', () => debug('socket error'));
+    socket.on('close', () => debug('socket close'));
   }
 
   close() {
@@ -40,9 +43,11 @@ class MongoWebDB extends EventEmitter {
     if (data.handle) {
       debug(`Recieved watch update ${data.handle}`);
       this.emit(`handle/${data.handle}`, data);
-    } else {
+    } else if (data.requestID) {
       debug(`Recieved message ${data.requestID}`);
       this.emit(`message/${data.requestID}`, data);
+    } else {
+      this.emit(`op/${data.op}`, data);
     }
   }
 
@@ -72,24 +77,8 @@ class MongoWebDB extends EventEmitter {
     return promise;
   }
 
-  login(data) {
-    return fetch(`http://${this.url}/login`, {
-      body: JSON.stringify(data), // must match 'Content-Type' header
-      cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-      credentials: 'same-origin', // include, same-origin, *omit
-      headers: {
-        'content-type': 'application/json',
-      },
-      method: 'POST', // *GET, POST, PUT, DELETE, etc.
-      mode: 'cors', // no-cors, cors, *same-origin
-      redirect: 'error', // *manual, follow, error
-      referrer: 'no-referrer', // *client, no-referrer
-    })
-      .then(res => res.json())
-      .then(body => this.executeCommand({
-        op: 'login',
-        token: body.token,
-      }));
+  auth() {
+    return new Auth(this);
   }
 }
 

@@ -1,4 +1,5 @@
 import { MongoClient } from 'mongodb';
+import { ObjectId } from 'bson';
 import MongoRealTimeClient from './real-time-client';
 import { MONGO_URL, MONGO_OPTIONS } from './defaults';
 
@@ -31,4 +32,7 @@ export async function getUser(data) {
   const client = await getClient();
   const collection = client.db('users').collection('users');
   return collection.findOne(data);
+}
+export async function getUserFromID(userid) {
+  return getUser({ _id: ObjectId(userid) });
 }

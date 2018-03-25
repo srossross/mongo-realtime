@@ -1,10 +1,16 @@
 import React from 'react';
 import List from './list';
+import LoginModal from '../src/ui/login';
 
 export default class App extends React.Component {
-  state = { value: '-' }
+  state = { value: '-', user: null }
   componentWillMount() {
     this.ref = this.props.db.collection('cln1').ref('hello');
+
+    this.props.db.auth().on('userstatus_changed', (user) => {
+      console.log('userstatus_changed', user);
+      this.setState({ user });
+    });
 
     this.ref.on('changed', (doc) => {
       this.setState({ value: doc.value });
@@ -20,10 +26,36 @@ export default class App extends React.Component {
     this.ref.set({ value: e.target.value });
   }
 
+
+  logout() {
+    this.props.db.auth().logout().then(() => {
+      window.location.reload();
+    });
+  }
+
+  handleLogin = () => {
+    console.log('handle login');
+    window.location.reload();
+  }
+
+  handleClose = () => {
+    this.setState({ loginModalOpen: false });
+  }
+
   render() {
     return (
       <div>
         Hello <input value={this.state.value} onChange={e => this.changeMe(e)} />
+        { this.state.user ?
+          <button onClick={() => this.logout()}>Logout {this.state.user}</button> :
+          <button onClick={() => this.setState({ loginModalOpen: true })} >Login</button>
+        }
+        <LoginModal
+          open={this.state.loginModalOpen}
+          auth={this.props.db.auth()}
+          onLogin={this.handleLogin}
+          onClose={this.handleClose}
+        />
         <List db={this.props.db} />
       </div>
     );

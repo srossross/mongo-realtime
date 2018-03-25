@@ -41,11 +41,6 @@ module.exports = async function main() {
   });
 
   httpServer.on('request', (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    if (req.headers.origin === 'null') {
-      req.headers.origin = null;
-    }
-    // console.log('req.headers.origin', req.headers.origin, req.headers.origin === 'null');
     debug('handleRequest', req.method, req.url);
     if (req.url.match(/^\/engine.io/)) {
       server.handleRequest(req, res);

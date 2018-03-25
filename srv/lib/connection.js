@@ -18,6 +18,9 @@ class Connection {
     this.socket = socket;
     this.perms = perms;
     this.watching = new Set();
+
+    this.socket.send(bson.serialize({ op: 'userstatus', user: this.user.username }));
+
     socket.on('message', (data) => {
       this.message(bson.deserialize(data))
         .catch((err) => {

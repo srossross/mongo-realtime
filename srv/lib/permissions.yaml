@@ -9,7 +9,11 @@ cln1:
   '*': true
 
 items:
-  '*': true
+  query: "{}"
+  remove: "{}"
+  insert: "doc.userId === user._id"
+  update: false
+
 
 cln2:
   insert: "doc.userId === user._id"
