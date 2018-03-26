@@ -48,7 +48,7 @@ export async function addUser(data) {
   } catch (err) {
     if (err.name === 'MongoError' && err.code === 11000) {
       const message = `User with email ${data.email} already exists`;
-      throw badRequest(message, { body: [{ property: 'request.body.email', messages: [message] }] });
+      throw badRequest(message, { email: [message] });
     }
     throw err;
   }

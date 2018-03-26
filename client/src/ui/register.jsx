@@ -21,6 +21,7 @@ export default class Login extends React.Component {
     password: '',
     confirmPassword: '',
     email: '',
+    submitted: false,
   };
 
   get anyInvalid() {
@@ -37,17 +38,26 @@ export default class Login extends React.Component {
   }
 
   handleLogin() {
+    console.log('handleLogin', this.props.onLogin);
     if (this.props.onLogin) {
+      this.setState({ submitted: false });
       this.props.onLogin();
     }
   }
 
   handleSubmit = () => {
-    if (this.anyInvalid) {
+    if (this.state.submitted || this.anyInvalid) {
       return;
     }
-    this.props.auth.createUserWithEmailAndPassword(this.state.email, this.state.password)
-      .then(() => this.handleLogin());
+    this.setState({ submitted: true }, () => {
+      this.props.auth.createUserWithEmailAndPassword(this.state.email, this.state.password)
+        .then(() => this.handleLogin())
+        .catch(err => this.setState({
+          emailError: err.email,
+          passwordError: err.password,
+          submitted: false,
+        }));
+    });
   };
 
   handleChangeType = (e) => {
@@ -66,6 +76,7 @@ export default class Login extends React.Component {
     this.setState({
       password: e.target.value,
       confirmPasswordError: e.target.value === this.state.confirmPassword ? null : 'must match password',
+      passwordError: e.target.value.length < 6 ? 'does not meet minimum length of 6' : null,
     });
   }
 
@@ -115,11 +126,11 @@ export default class Login extends React.Component {
           onChange={this.handleUpdateConfirmPassword}
         />
         <RaisedButton
-          label="Register"
+          label={this.state.submitted ? 'Working ...' : 'Register'}
           primary
           keyboardFocused
           fullWidth
-          disabled={this.anyInvalid}
+          disabled={this.anyInvalid || this.state.submitted}
           onClick={this.handleSubmit}
         />
         <div style={{ textAlign: 'center', padding: '12px' }}>

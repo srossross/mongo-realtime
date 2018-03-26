@@ -30,11 +30,12 @@ class Auth extends EventEmitter {
       // referrer: 'no-referrer', // *client, no-referrer
     };
     return fetch(`http://${this.url}/register`, opts)
-      .then((res) => {
-        if (res.status !== 200) {
-          throw new Error({ message: 'invalid login', res });
+      .then(res => res.json())
+      .then((body) => {
+        if (body.errors) {
+          throw body.errors;
         }
-        res.json();
+        return body;
       });
   }
 
@@ -52,11 +53,12 @@ class Auth extends EventEmitter {
       // referrer: 'no-referrer', // *client, no-referrer
     };
     return fetch(`http://${this.url}/login`, opts)
-      .then((res) => {
-        if (res.status !== 200) {
-          throw new Error({ message: 'invalid login', res });
+      .then(res => res.json())
+      .then((body) => {
+        if (body.loginOk) {
+          return;
         }
-        res.json();
+        throw body.errors;
       });
   }
 

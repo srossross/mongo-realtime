@@ -1,7 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 import express from 'express';
 import { validate } from 'express-jsonschema';
-import { badRequest, isBoom } from 'boom';
+import { badRequest, forbidden, isBoom } from 'boom';
 import bcrypt from 'bcrypt';
 
 import { sign } from '../webtoken';
@@ -43,13 +43,39 @@ app.use(
   }),
 );
 
+const loginSchema = {
+  type: 'object',
+  properties: {
+    email: {
+      type: 'string',
+      minLength: 1,
+      required: true,
+    },
+    password: {
+      type: 'string',
+      minLength: 1,
+      required: true,
+    },
+  },
+};
+
 app.post(
   '/login',
-  passport.authenticate('local', { session: false }),
-  asm(async (req, res) => {
-    const token = await sign({ userid: req.user._id.toString() });
-    res.cookie('auth-token', token, { httpOnly: true });
-    res.json({ loginOk: true });
+  validate({ body: loginSchema }),
+  asm(async (req, res, next) => {
+    passport.authenticate('local', async (err, user, info) => {
+      if (err) {
+        next(err);
+        return;
+      }
+      if (!user) {
+        next(forbidden('Bad Login', info));
+      } else {
+        const token = await sign({ userid: user._id.toString() });
+        res.cookie('auth-token', token, { httpOnly: true });
+        res.json({ loginOk: true });
+      }
+    })(req, res, next);
   }),
 );
 
@@ -101,7 +127,11 @@ app.post(
 
 app.use((err, req, res, next) => {
   if (err.name === 'JsonSchemaValidation') {
-    next(badRequest('Validation failed', err.validations));
+    const errors = {};
+    err.validations.body.forEach(({ property, messages }) => {
+      errors[property.slice('request.body.'.length)] = messages;
+    });
+    next(badRequest('Validation failed', errors));
     return;
   }
   next(err);
@@ -113,7 +143,7 @@ app.use((err, req, res, next) => {
     res.json({
       message: err.output.payload.message,
       errorType: err.output.payload.error,
-      error: err.data,
+      errors: err.data,
     });
     return;
   }

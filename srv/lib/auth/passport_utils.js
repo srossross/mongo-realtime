@@ -33,14 +33,14 @@ passport.use('local', new Strategy(
       const user = await getUser({ email });
       if (!user) {
         debug(`User ${email} does not exist`);
-        return done(null, false);
+        return done(null, false, { email: `User ${email} does not exist` });
       }
       if (await bcryptCompare(password, user.passwordHash)) {
         debug(`User ${email} OK`);
         return done(null, user);
       }
       debug(`User ${email} bad password`);
-      return done(null, false);
+      return done(null, false, { password: 'Invalid password' });
     } catch (err) {
       debug(`DB error ${email}`);
       return done(err);

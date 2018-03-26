@@ -37,7 +37,13 @@ export default class Login extends React.Component {
 
   handleSubmit = () => {
     this.props.auth.loginWithEmailAndPassword(this.state.email, this.state.password)
-      .then(() => this.handleLogin());
+      .then(() => this.handleLogin())
+      .catch((err) => {
+        this.setState({
+          emailError: err.email,
+          passwordError: err.password,
+        });
+      });
   };
 
   handleChangeType = (e) => {
@@ -53,14 +59,16 @@ export default class Login extends React.Component {
           type="email"
           style={{ width: '100%', marginBottom: '12px' }}
           value={this.state.email}
-          onChange={e => this.setState({ email: e.target.value })}
+          errorText={this.state.emailError}
+          onChange={e => this.setState({ email: e.target.value, emailError: null })}
         />
         <TextField
           hintText="Password"
           type="password"
           style={{ width: '100%', marginBottom: '12px' }}
           value={this.state.password}
-          onChange={e => this.setState({ password: e.target.value })}
+          errorText={this.state.passwordError}
+          onChange={e => this.setState({ password: e.target.value, passwordError: null })}
         />
         <RaisedButton
           label="Login"
