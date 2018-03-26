@@ -8,7 +8,6 @@ export function startLogin(auth) {
     document.body.innerHTML += '<div id="mongo-realtime-login"/>';
     loginModal = ReactDOM.render(React.createElement(Login, { auth }), document.getElementById('mongo-realtime-login'));
   }
-  console.log('loginModal', loginModal);
   loginModal.handleOpen();
   return loginModal;
 }

@@ -6,6 +6,8 @@ import { MONGO_URL, MONGO_OPTIONS, MONGO_USER_DB } from './defaults';
 
 const debug = require('debug')('mongo-realtime:db');
 
+const { error } = console;
+
 export async function getClient() {
   if (!getClient.client) {
     getClient.client = await MongoClient.connect(MONGO_URL, MONGO_OPTIONS);
@@ -17,7 +19,7 @@ export async function getClient() {
     try {
       await users.createIndex('email', { dropDups: true, unique: true });
     } catch (err) {
-      console.error(`ERROR db:${MONGO_USER_DB} collection:users`, err.message);
+      error(`ERROR db:${MONGO_USER_DB} collection:users`, err.message);
     }
   }
 

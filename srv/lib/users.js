@@ -4,6 +4,9 @@ const bson = new BSON();
 
 const debug = require('debug')('mongo-realtime:presense');
 
+
+const { error } = console;
+
 export default class Users {
   constructor(userDB) {
     this.userDB = userDB;
@@ -42,7 +45,10 @@ export default class Users {
   }
 
 
+  /* eslint-disable class-methods-use-this */
   updatePresense(key, isConnected) {
+    // TODO: implement me
+
     debug(`updatePresense ${key} isConnected:${isConnected}`);
   }
 
@@ -63,19 +69,19 @@ export default class Users {
           break;
         }
         default:
-          console.log('unknown change.operationType', change.operationType);
+          debug(`Unknown change.operationType ${change.operationType}`);
           break;
       }
     });
 
     changeStream.on('error', (err) => {
-      console.log('change err', err);
+      error('change err', err);
     });
     changeStream.on('close', () => {
-      console.log('change close');
+      error('change close');
     });
     changeStream.on('end', () => {
-      console.log('change end');
+      error('change end');
     });
   }
 }

@@ -38,7 +38,6 @@ export default class Login extends React.Component {
   }
 
   handleLogin() {
-    console.log('handleLogin', this.props.onLogin);
     if (this.props.onLogin) {
       this.setState({ submitted: false });
       this.props.onLogin();

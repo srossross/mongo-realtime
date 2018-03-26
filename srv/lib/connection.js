@@ -223,7 +223,11 @@ class Connection {
       ? this.generateUpdateParams(collection, rules.update, data.update) : undefined;
 
     const doc = Perms.hasInsert(op, options.upsert)
-      ? this.generateInsertParams(collection, rules.insert, data.doc, data.query, options.upsert) : undefined;
+      ? this.generateInsertParams(
+        collection,
+        rules.insert, data.doc,
+        data.query, options.upsert,
+      ) : undefined;
 
     return {
       query, update, doc, options,
