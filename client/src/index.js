@@ -78,7 +78,10 @@ class MongoWebDB extends EventEmitter {
   }
 
   auth() {
-    return new Auth(this);
+    if (!this.authObj) {
+      this.authObj = new Auth(this);
+    }
+    return this.authObj;
   }
 }
 

@@ -1,11 +1,13 @@
 const EventEmitter = require('events');
 
+const debug = require('debug')('mongo-realtime:auth');
+
 class Auth extends EventEmitter {
   constructor(db) {
     super();
     this.db = db;
     db.on('op/userstatus', ({ user }) => {
-      console.log('op/userstatus data data data data', user);
+      debug('userstatus changed', user);
       this.emit('userstatus_changed', user);
     });
   }
@@ -14,9 +16,31 @@ class Auth extends EventEmitter {
     return this.db.url;
   }
 
+  createUserWithEmailAndPassword(email, password) {
+    const opts = {
+      body: JSON.stringify({ email, password }),
+      cache: 'no-cache',
+      credentials: 'include',
+      headers: {
+        'content-type': 'application/json',
+      },
+      method: 'POST',
+      mode: 'cors',
+      redirect: 'error',
+      // referrer: 'no-referrer', // *client, no-referrer
+    };
+    return fetch(`http://${this.url}/register`, opts)
+      .then((res) => {
+        if (res.status !== 200) {
+          throw new Error({ message: 'invalid login', res });
+        }
+        res.json();
+      });
+  }
+
   loginWithEmailAndPassword(email, password) {
     const opts = {
-      body: JSON.stringify({ username: email, password }),
+      body: JSON.stringify({ email, password }),
       cache: 'no-cache',
       credentials: 'include',
       headers: {

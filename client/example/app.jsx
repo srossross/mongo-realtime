@@ -1,6 +1,6 @@
 import React from 'react';
 import List from './list';
-import LoginModal from '../src/ui/login';
+import LoginModal from '../src/ui/login_or_register';
 
 export default class App extends React.Component {
   state = { value: '-', user: null }
@@ -34,7 +34,6 @@ export default class App extends React.Component {
   }
 
   handleLogin = () => {
-    console.log('handle login');
     window.location.reload();
   }
 
@@ -47,16 +46,17 @@ export default class App extends React.Component {
       <div>
         Hello <input value={this.state.value} onChange={e => this.changeMe(e)} />
         { this.state.user ?
-          <button onClick={() => this.logout()}>Logout {this.state.user}</button> :
+          <button onClick={() => this.logout()}>Logout {this.state.user.email}</button> :
           <button onClick={() => this.setState({ loginModalOpen: true })} >Login</button>
         }
         <LoginModal
+          type="Login"
           open={this.state.loginModalOpen}
           auth={this.props.db.auth()}
           onLogin={this.handleLogin}
           onClose={this.handleClose}
         />
-        <List db={this.props.db} />
+        <List db={this.props.db} user={this.state.user} />
       </div>
     );
   }

@@ -16,7 +16,21 @@ const dbName = 'web';
 module.exports = async function main() {
   const server = new engine.Server();
 
-  const permData = await yaml.read('./permissions.yaml');
+  // const permData = await yaml.read('./permissions.yaml');
+  const permData = {
+    cln1: {
+      query: true,
+      insert: true,
+      update: true,
+      remove: false,
+    },
+    items: {
+      query: '{userId: user._id}',
+      remove: '{userId: user._id}',
+      insert: 'user && user._id.equals(doc.userId)',
+      update: false,
+    },
+  };
   const perms = new Perms(permData);
   // Database Name
   // Connect using MongoClient

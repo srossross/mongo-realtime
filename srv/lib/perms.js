@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import micromatch from 'micromatch';
 import safeEval from 'safe-eval';
-
+// import {expect} from 'chai';
 const debug = require('debug')('mongo-realtime:perms');
 
 function matchingKeys(obj, toMatch) {
@@ -42,7 +42,10 @@ export default class Perms {
     return Perms.QueryOps.indexOf(op) !== -1;
   }
 
-  static hasInsert(op) {
+  static hasInsert(op, upsertOption) {
+    if (upsertOption && Perms.UpdateOps.indexOf(op) !== -1) {
+      return true;
+    }
     return Perms.InsertOps.indexOf(op) !== -1;
   }
   static hasRemove(op) {

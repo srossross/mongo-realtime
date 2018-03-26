@@ -19,7 +19,15 @@ class Connection {
     this.perms = perms;
     this.watching = new Set();
 
-    this.socket.send(bson.serialize({ op: 'userstatus', user: this.user.username }));
+    if (user._id) {
+      this.socket.send(bson.serialize({
+        op: 'userstatus',
+        user: {
+          email: this.user.email,
+          _id: this.user._id,
+        },
+      }));
+    }
 
     socket.on('message', (data) => {
       this.message(bson.deserialize(data))
@@ -63,9 +71,8 @@ class Connection {
   }
 
   async remove(collection, query, options) {
-    const res = await this.db.collection(collection).remove(query, options);
-    console.log(res);
-    return {};
+    const { n, ok } = await this.db.collection(collection).remove(query, options);
+    return { n, ok };
   }
 
   count(collection, query) {
@@ -74,7 +81,6 @@ class Connection {
 
 
   async updateOne(collection, query, update, options) {
-    console.log('query, update, options', query, update, options);
     const res = await this.db.collection(collection).updateOne(query, update, options);
     const { result } = res;
     const { nModified, ok } = result;
@@ -153,7 +159,7 @@ class Connection {
 
   generateUpdateParams(collection, rule, update) {
     if (!rule.valid()) {
-      throw new PermissionError(`User ${this.user.username} can not update in collection ${collection}`);
+      throw new PermissionError(`User ${this.user.username} can not update in collection ${collection} (explicit deny)`);
     }
     if (!update) {
       throw new PermissionError('Parameter `update` is required');
@@ -166,17 +172,30 @@ class Connection {
 
     return update;
   }
-  generateInsertParams(collection, rule, doc) {
-    if (!rule.valid()) {
-      throw new PermissionError(`User ${this.user.username} can not insert into collection ${collection}`);
-    }
-    if (!doc) {
-      throw new PermissionError('Parameter `doc` is required');
-    }
 
-    const ruleResult = rule.result({ doc });
-    if (!ruleResult) {
-      throw new PermissionError(`User ${this.user.username} can not insert into collection ${collection}`);
+  generateInsertParams(collection, rule, doc, query, upsert) {
+    if (!rule.valid()) {
+      throw new PermissionError(`User ${this.user.username} can not insert into collection ${collection} (rule not valid)`);
+    }
+    if (upsert) {
+      if (!query) {
+        throw new PermissionError('Parameter `query` is required');
+      }
+
+      const ruleResult = rule.result({ doc: query });
+      if (!ruleResult) {
+        throw new PermissionError(`User ${this.user.username} can not upsert into collection ${collection}
+        (document denied: expected ${rule.rule})`);
+      }
+    } else {
+      if (!doc) {
+        throw new PermissionError('Parameter `doc` is required');
+      }
+      const ruleResult = rule.result({ doc });
+      if (!ruleResult) {
+        throw new PermissionError(`User ${this.user.username} can not insert into collection ${collection}
+        (query denied: expected ${rule.rule})`);
+      }
     }
 
     return doc;
@@ -204,7 +223,7 @@ class Connection {
       ? this.generateUpdateParams(collection, rules.update, data.update) : undefined;
 
     const doc = Perms.hasInsert(op, options.upsert)
-      ? this.generateInsertParams(collection, rules.insert, data.doc, data.query) : undefined;
+      ? this.generateInsertParams(collection, rules.insert, data.doc, data.query, options.upsert) : undefined;
 
     return {
       query, update, doc, options,
@@ -264,7 +283,7 @@ class Connection {
       result = await this.performOperation(collection, op, query, doc, update, options);
       debug(`Done: user:${this.user.username} ${op} - nModified:${result.nModified}`);
     } catch (err) {
-      debug(err.message);
+      debug('OP ERROR:', err.message);
       if (err.isUserError) {
         this.socket.send(bson.serialize({ requestID, error: err.message }));
       } else {

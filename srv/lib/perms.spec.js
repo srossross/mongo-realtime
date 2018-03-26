@@ -1,5 +1,5 @@
-const Perms = require('./perms');
-const { expect } = require('chai');
+import { expect } from 'chai';
+import Perms from './perms';
 
 describe('perms', () => {
   it('should return rules', () => {

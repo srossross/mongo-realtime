@@ -16,6 +16,7 @@ export default class List extends React.Component {
       helloItem: true,
       pushed: true,
       value: this.state.value,
+      userId: this.props.user._id,
     });
   }
   removeOne(e, _id) {

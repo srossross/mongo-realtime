@@ -10,7 +10,7 @@ cln1:
 
 items:
   query: "{}"
-  remove: "{}"
+  remove: false
   insert: "doc.userId === user._id"
   update: false
 
