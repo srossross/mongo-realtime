@@ -1,14 +1,14 @@
 import { createServer } from 'http';
+import engine from 'engine.io';
 
 import app from './auth';
 import { getClient, getRTClient } from './db';
-import Users from './users';
+import presence from './presence';
 import Perms from './perms';
-import { PORT } from './defaults';
+import { PORT, MONGO_USER_DB } from './defaults';
 import connections from './connections';
 
-const engine = require('engine.io');
-const yaml = require('node-yaml');
+const { log } = console;
 const debug = require('debug')('mongo-realtime:server');
 
 const dbName = 'web';
@@ -16,33 +16,16 @@ const dbName = 'web';
 module.exports = async function main() {
   const server = new engine.Server();
 
-  // const permData = await yaml.read('./permissions.yaml');
-  const permData = {
-    cln1: {
-      query: true,
-      insert: true,
-      update: true,
-      remove: false,
-    },
-    items: {
-      query: '{userId: user._id}',
-      remove: '{userId: user._id}',
-      insert: 'user && user._id.equals(doc.userId)',
-      update: false,
-    },
-  };
-  const perms = new Perms(permData);
-  // Database Name
-  // Connect using MongoClient
+  const perms = await Perms.fromYaml(process.env.PERMS_FILE || 'permissions.yaml');
+
   const client = await getClient();
   const rtclient = await getRTClient();
 
-  const userDB = client.db('users');
-  const users = new Users(userDB);
-  await users.watch();
+  const userDB = client.db(MONGO_USER_DB);
 
-  // eslint-disable-next-line no-console
-  console.log(`server listening on port ${PORT}`);
+  const users = await presence.startWatching(userDB);
+
+  log(`server listening on port ${PORT}`);
 
   const rt = rtclient.db('web');
 

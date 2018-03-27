@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import Login from './login';
 
 let loginModal = null;
+
 export function startLogin(auth) {
   if (loginModal === null) {
     document.body.innerHTML += '<div id="mongo-realtime-login"/>';

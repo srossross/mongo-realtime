@@ -27,6 +27,7 @@
     "body-parser": "^1.18.2",
     "boom": "^7.2.0",
     "bson": "^2.0.4",
+    "bunyan": "^1.8.12",
     "cookie": "^0.3.1",
     "cookie-parser": "^1.4.3",
     "debug": "^3.1.0",
@@ -42,7 +43,8 @@
     "node-yaml": "^3.1.1",
     "passport": "^0.4.0",
     "passport-local": "^1.0.0",
-    "safe-eval": "^0.3.0"
+    "safe-eval": "^0.3.0",
+    "winston": "^2.4.1"
   },
   "devDependencies": {
     "babel-eslint": "^8.2.2",

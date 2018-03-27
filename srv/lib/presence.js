@@ -2,12 +2,12 @@ import BSON from 'bson';
 
 const bson = new BSON();
 
-const debug = require('debug')('mongo-realtime:presense');
+const debug = require('debug')('mongo-realtime:presence');
 
 
 const { error } = console;
 
-export default class Users {
+export default class Presence {
   constructor(userDB) {
     this.userDB = userDB;
     this.users = [];
@@ -46,26 +46,27 @@ export default class Users {
 
 
   /* eslint-disable class-methods-use-this */
-  updatePresense(key, isConnected) {
+  update(key, isConnected) {
     // TODO: implement me
-
-    debug(`updatePresense ${key} isConnected:${isConnected}`);
+    debug(`update presence ${key} isConnected:${isConnected}`);
   }
 
-  async watch() {
-    await this.userDB.createCollection('users');
-    const changeStream = this.userDB.collection('users').watch();
+  static async startWatching(userDB) {
+    const presence = new Presence(userDB);
+
+    await userDB.createCollection('users');
+    const changeStream = userDB.collection('users').watch();
     changeStream.on('change', (change) => {
       switch (change.operationType) {
         case 'update': {
           const { connected } = change.updateDescription.updatedFields;
           if (connected !== undefined) {
-            this.updatePresense(change.documentKey._id, connected);
+            presence.update(change.documentKey._id, connected);
           }
           break;
         }
         case 'insert': {
-          this.updatePresense(change.documentKey._id, true);
+          presence.update(change.documentKey._id, true);
           break;
         }
         default:
@@ -83,5 +84,7 @@ export default class Users {
     changeStream.on('end', () => {
       error('change end');
     });
+
+    return presence;
   }
 }

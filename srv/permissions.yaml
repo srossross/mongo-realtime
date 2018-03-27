@@ -1,0 +1,34 @@
+cln1:
+  query: true
+  insert: true
+  update: true
+  remove: false
+items:
+  query: '{userId: user._id}'
+  remove: '{userId: user._id}'
+  insert: 'user && user._id.equals(doc.userId)'
+  update: false
+
+# #
+# # auth:
+# #   native
+# #
+# # rules:
+# '*': false
+#
+# cln1:
+#   '*': true
+#
+# items:
+#   query: "{}"
+#   remove: false
+#   insert: "doc.userId === user._id"
+#   update: false
+#
+#
+# cln2:
+#   insert: "doc.userId === user._id"
+#   query: "{ userId: user._id}"
+#   update: "field('userId').notModified() && user._id"
+#   indices:
+#     - [('a', 1)]

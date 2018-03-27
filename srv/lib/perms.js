@@ -1,7 +1,10 @@
 import _ from 'lodash';
 import micromatch from 'micromatch';
 import safeEval from 'safe-eval';
-// import {expect} from 'chai';
+import yaml from 'node-yaml';
+import path from 'path';
+
+const { log } = console;
 const debug = require('debug')('mongo-realtime:perms');
 
 function matchingKeys(obj, toMatch) {
@@ -37,6 +40,12 @@ export default class Perms {
   static InsertOps = ['insert', 'insertOne']
   static QueryOps = ['find', 'findOne', 'watchID', 'watchQuery', 'count'].concat(Perms.UpdateOps)
   static RemoveOps = ['remove']
+
+  static async fromYaml(fn) {
+    log(`Loading perms from yaml ${fn}`);
+    const permData = await yaml.read(path.resolve(process.cwd(), fn));
+    return new Perms(permData);
+  }
 
   static hasQuery(op) {
     return Perms.QueryOps.indexOf(op) !== -1;
